@@ -3,10 +3,6 @@
 version = 3
 
 [[package]]
-<<<<<<< HEAD
-name = "zero2prod"
-version = "0.1.0"
-=======
 name = "actix-codec"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2004,4 +2000,3 @@ dependencies = [
  "cc",
  "pkg-config",
 ]
->>>>>>> Health check api endpoint
