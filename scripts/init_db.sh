@@ -16,3 +16,14 @@ docker run \
   -d postgres \
   postgres -N 1000
 
+export PGPASSWORD="${DB_PASSWORD}"
+until psql -h "${DB_HOST}" -U "${DB_USER}" -p "${DB_PORT}" -d "postgres" -c '\q'; do
+    >&2 echo "Postgresql is still unavailable - sleeping"
+    sleep 1
+done
+
+>&2 echo "Postgresql is up and running on port ${DB_PORT}!"
+
+DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}
+export DATABASE_URL
+sqlx database create
