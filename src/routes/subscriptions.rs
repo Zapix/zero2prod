@@ -1,5 +1,5 @@
 use actix_web::{web, HttpResponse, Responder};
-use sqlx::{PgConnection, PgPool};
+use sqlx::{PgPool};
 use uuid::Uuid;
 use chrono::Utc;
 
@@ -10,7 +10,7 @@ pub struct FormData {
 }
 
 pub async fn subscribe(form: web::Form<FormData>, connection_pool: web::Data<PgPool>) -> impl Responder {
-    sqlx::query!(
+    let _ = sqlx::query!(
         r#"
         INSERT INTO subscriptions (id, email, name, subscribed_at)
         VALUES ($1, $2, $3, $4)

@@ -16,6 +16,6 @@ pub fn run(tcp_listener: TcpListener, connection_pool: PgPool) -> Result<Server,
     )
         .listen(tcp_listener)?
         .run();
-    println!("Listening {}", address.to_string());
+    println!("Listening {}", address);
     Ok(server)
 }
