@@ -15,6 +15,7 @@ path = "src/main.rs"
 actix-web = "4"
 reqwest = "0.12.7"
 serde = { version = "1.0.209", features = ["derive"] }
+serde-aux = "4.5.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 config = "0.14.0"
 uuid = { version = "1.10.0", features = ["v4", "v7"] }
