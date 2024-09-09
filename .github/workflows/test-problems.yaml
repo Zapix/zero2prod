@@ -9,9 +9,6 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Prepare configuration.yaml for tests
-        run: cp test.configuration.yaml configuration.yaml
-
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -43,9 +40,6 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v2
-
-      - name: Prepare configuration.yaml for tests
-        run: cp test.configuration.yaml configuration.yaml
 
       - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
@@ -104,9 +98,6 @@ jobs:
 
       - name: Prepare .env for tests
         run: cp test.env .env
-
-      - name: Prepare configuration.yaml for tests
-        run: cp test.configuration.yaml configuration.yaml
 
       - name: Prepare database
         run: SKIP_DOCKER=true ./scripts/init_db.sh
