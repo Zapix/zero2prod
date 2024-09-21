@@ -68,7 +68,7 @@ pub async fn spawn_app() -> TestApp {
     Lazy::force(&TRACING);
     let email_server = MockServer::start().await;
 
-    let mut configuration = {
+    let configuration = {
         let mut c = get_configuration().expect("Failed to read configuration");
         c.database.database_name = Uuid::new_v4().to_string();
         c.application.port = 0;
@@ -76,7 +76,7 @@ pub async fn spawn_app() -> TestApp {
         c.email_client.base_url = email_server.uri();
         c
     };
-    let connection_pool = configure_database(&configuration.database).await;
+    configure_database(&configuration.database).await;
 
     let application = Application::build(configuration.clone()).await.expect("Can't build server");
     let port = application.port();
