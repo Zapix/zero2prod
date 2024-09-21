@@ -13,10 +13,9 @@ path = "src/main.rs"
 
 [dependencies]
 actix-web = "4"
-reqwest = "0.12.7"
 serde = { version = "1.0.209", features = ["derive"] }
 serde-aux = "4.5.0"
-tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread", "rt"] }
 config = "0.14.0"
 uuid = { version = "1.10.0", features = ["v4", "v7"] }
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
@@ -30,6 +29,13 @@ tracing-log = "0.2.0"
 secrecy = { version = "0.8.0", features = ["serde"] }
 unicode-segmentation = "1.11.0"
 validator = "0.18.1"
+rand = { version = "0.8", features = ["std_rng"] }
+
+
+[dependencies.reqwest]
+version = "0.12.7"
+default-features = false
+features = ["json", "rustls-tls"]
 
 [dependencies.sqlx]
 version = "0.8.1"
@@ -49,4 +55,6 @@ claims = "0.7.1"
 fake = "2.9.2"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
-rand = { version = "0.8", features = ["std_rng"] }
+wiremock = "0.6.2"
+serde_json = "1.0.128"
+linkify = "0.10.0"
