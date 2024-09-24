@@ -1,4 +1,6 @@
-use actix_web::{web, HttpResponse, Responder};
+use std::error::Error;
+use std::fmt::{write, Formatter};
+use actix_web::{web, HttpResponse, Responder, ResponseError};
 use sqlx::{Executor, PgPool, Postgres, Transaction};
 use uuid::Uuid;
 use chrono::Utc;
@@ -24,6 +26,44 @@ impl TryFrom<FormData> for NewSubscriber {
         Ok(Self { email, name})
     }
 }
+
+fn chain_error_fmt(
+    e: &impl std::error::Error,
+    f: &mut std::fmt::Formatter<'_>,
+) -> std::fmt::Result {
+    writeln!(f, "{}\n", e)?;
+    let mut current = e.source();
+    while let Some(cause) = current {
+        writeln!(f, "Caused by:\n\t{}", cause)?;
+        current = cause.source();
+    }
+    Ok(())
+}
+
+pub struct StoreTokenError(sqlx::Error);
+
+impl std::fmt::Debug for StoreTokenError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        chain_error_fmt(self, f)
+    }
+}
+
+impl std::error::Error for StoreTokenError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+    }
+}
+
+impl std::fmt::Display for StoreTokenError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "A database error was encountered while trying to store a subscription token."
+        )
+    }
+}
+
+impl ResponseError for StoreTokenError {}
 
 fn generate_subscription_token() -> String {
     let mut rng = thread_rng();
@@ -102,7 +142,7 @@ pub async fn send_confirmation_email(
     name = "Storing subscription in db",
     skip(transaction, subscription_token)
 )]
-pub async fn store_subscription_token(transaction: &mut Transaction<'_, Postgres>, subscriber_id: &Uuid, subscription_token: &str) -> Result<(), sqlx::Error> {
+pub async fn store_subscription_token(transaction: &mut Transaction<'_, Postgres>, subscriber_id: &Uuid, subscription_token: &str) -> Result<(), StoreTokenError> {
     let query = sqlx::query!(
         r#"INSERT INTO subscription_tokens (subscription_token, subscriber_id) VALUES ($1, $2)"#,
         subscription_token,
@@ -113,7 +153,7 @@ pub async fn store_subscription_token(transaction: &mut Transaction<'_, Postgres
         .await
         .map_err(|e| {
             tracing::error!("Failed to execute query {:?}", e);
-            e
+            StoreTokenError(e)
         })?;
     Ok(())
 }
@@ -131,34 +171,32 @@ pub async fn subscribe(
     connection_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,
     base_url: web::Data<ApplicationBaseUrl>
-) -> impl Responder {
+) -> Result<HttpResponse, actix_web::Error>{
     let new_subscriber = match form.0.try_into() {
         Ok(new_subscriber) => new_subscriber,
-        Err(_) => return HttpResponse::BadRequest().finish(),
+        Err(_) => return Ok(HttpResponse::BadRequest().finish()),
     };
     let mut transaction = match connection_pool.begin().await {
         Ok(transaction) => transaction,
-        Err(_) => return HttpResponse::InternalServerError().finish(),
+        Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
     };
 
     let subscriber_id = match insert_subscriber(&mut transaction, &new_subscriber).await {
         Ok(subscriber_id) => subscriber_id,
-        Err(_) => return HttpResponse::InternalServerError().finish(),
+        Err(_) => return Ok(HttpResponse::InternalServerError().finish()),
     };
     let subscription_token = generate_subscription_token();
-    if store_subscription_token(&mut transaction, &subscriber_id, &subscription_token).await.is_err() {
-        return HttpResponse::InternalServerError().finish()
-    }
+    store_subscription_token(&mut transaction, &subscriber_id, &subscription_token).await?;
     if send_confirmation_email(
         &email_client,
         new_subscriber,
         base_url.as_ref(),
         subscription_token.as_str(),
     ).await.is_err() {
-        return HttpResponse::InternalServerError().finish();
+        return Ok(HttpResponse::InternalServerError().finish());
     }
     if transaction.commit().await.is_err() {
-        return HttpResponse::InternalServerError().finish()
+        return Ok(HttpResponse::InternalServerError().finish());
     }
-    HttpResponse::Ok().finish()
+    Ok(HttpResponse::Ok().finish())
 }
