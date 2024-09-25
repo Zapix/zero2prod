@@ -30,6 +30,8 @@ secrecy = { version = "0.8.0", features = ["serde"] }
 unicode-segmentation = "1.11.0"
 validator = "0.18.1"
 rand = { version = "0.8", features = ["std_rng"] }
+thiserror = "1.0.64"
+anyhow = "1.0.89"
 
 
 [dependencies.reqwest]
