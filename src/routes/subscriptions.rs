@@ -1,4 +1,4 @@
-use std::fmt::{Formatter};
+use std::fmt::Formatter;
 use actix_web::{web, HttpResponse, ResponseError};
 use actix_web::http::StatusCode;
 use sqlx::{Executor, PgPool, Postgres, Transaction};
@@ -7,8 +7,9 @@ use chrono::Utc;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use anyhow::Context;
-use crate::domain::{SubscriberName, NewSubscriber, SubscriberEmail};
+use crate::domain::{NewSubscriber, SubscriberEmail, SubscriberName};
 use crate::email_client::EmailClient;
+use crate::routes::helpers::chain_error_fmt;
 use crate::startup::ApplicationBaseUrl;
 
 #[derive(serde::Deserialize)]
@@ -25,19 +26,6 @@ impl TryFrom<FormData> for NewSubscriber {
         let email = SubscriberEmail::parse(value.email)?;
         Ok(Self { email, name})
     }
-}
-
-fn chain_error_fmt(
-    e: &impl std::error::Error,
-    f: &mut std::fmt::Formatter<'_>,
-) -> std::fmt::Result {
-    writeln!(f, "{}\n", e)?;
-    let mut current = e.source();
-    while let Some(cause) = current {
-        writeln!(f, "Caused by:\n\t{}", cause)?;
-        current = cause.source();
-    }
-    Ok(())
 }
 
 pub struct StoreTokenError(sqlx::Error);
@@ -150,7 +138,7 @@ pub async fn send_confirmation_email(
     );
     email_client
         .send_email(
-            new_subscriber.email,
+            &new_subscriber.email,
             "Welcome!",
             html_body.as_str(),
             text_body.as_str(),
