@@ -1,3 +1,4 @@
+use uuid::Uuid;
 use crate::helpers::{spawn_app, ConfirmationLinks, TestApp};
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -100,7 +101,54 @@ async fn requests_missing_authorization_are_rejected() {
     assert_eq!(
         response.headers()["WWW-Authenticate"],
         r#"Basic realm="publish""#
-    )
+    );
+}
+
+#[tokio::test]
+async fn non_existing_user_is_rejected() {
+    let mut app = spawn_app().await;
+    app.test_user.username = Uuid::new_v4().to_string();
+    app.test_user.password = Uuid::new_v4().to_string();
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "newsletter title",
+        "content": {
+            "text": "newsletter content",
+            "html": "<p>newsletter content</p>"
+        }
+    });
+
+    let response = app.publish_newsletter(newsletter_request_body)
+        .await;
+
+    assert_eq!(response.status().as_u16(), 401);
+    assert_eq!(
+        response.headers()["WWW-Authenticate"],
+        r#"Basic realm="publish""#
+    );
+}
+
+#[tokio::test]
+async fn invalid_password_is_rejected() {
+    let mut app = spawn_app().await;
+    app.test_user.password = Uuid::new_v4().to_string();
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "newsletter title",
+        "content": {
+            "text": "newsletter content",
+            "html": "<p>newsletter content</p>"
+        }
+    });
+
+    let response = app.publish_newsletter(newsletter_request_body)
+        .await;
+
+    assert_eq!(response.status().as_u16(), 401);
+    assert_eq!(
+        response.headers()["WWW-Authenticate"],
+        r#"Basic realm="publish""#
+    );
 }
 
 async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
