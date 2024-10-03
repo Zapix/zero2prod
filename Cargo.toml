@@ -32,6 +32,9 @@ validator = "0.18.1"
 rand = { version = "0.8", features = ["std_rng"] }
 thiserror = "1.0.64"
 anyhow = "1.0.89"
+base64 = "0.22.1"
+sha3 = "0.10.8"
+argon2 = {  version = "0.5.3", features=["std"] }
 
 
 [dependencies.reqwest]
