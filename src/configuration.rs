@@ -1,8 +1,8 @@
-use secrecy::{ExposeSecret, Secret};
-use sqlx::postgres::{PgConnectOptions, PgSslMode};
-use serde_aux::field_attributes::deserialize_number_from_string;
-use sqlx::ConnectOptions;
 use crate::domain::SubscriberEmail;
+use secrecy::{ExposeSecret, Secret};
+use serde_aux::field_attributes::deserialize_number_from_string;
+use sqlx::postgres::{PgConnectOptions, PgSslMode};
+use sqlx::ConnectOptions;
 
 #[derive(serde::Deserialize, Clone)]
 pub struct Settings {
@@ -13,10 +13,10 @@ pub struct Settings {
 
 #[derive(serde::Deserialize, Clone)]
 pub struct EmailClientSettings {
-   pub base_url: String,
-   pub sender_email: String,
-   pub authorization_token: Secret<String>,
-   pub timeout_milliseconds: u64,
+    pub base_url: String,
+    pub sender_email: String,
+    pub authorization_token: Secret<String>,
+    pub timeout_milliseconds: u64,
 }
 
 impl EmailClientSettings {
@@ -35,6 +35,7 @@ pub struct ApplicationSettings {
     pub port: u16,
     pub host: String,
     pub base_url: String,
+    pub hmac_secret: Secret<String>,
 }
 
 impl ApplicationSettings {
@@ -56,8 +57,7 @@ pub struct DatabaseSettings {
 
 impl DatabaseSettings {
     pub fn with_db(&self) -> PgConnectOptions {
-        self
-            .without_db()
+        self.without_db()
             .database(&self.database_name)
             .log_statements(tracing_log::log::LevelFilter::Trace)
     }
@@ -87,7 +87,7 @@ impl Environment {
     pub fn as_str(&self) -> &'static str {
         match self {
             Environment::Local => "local",
-            Environment::Production => "production"
+            Environment::Production => "production",
         }
     }
 }
@@ -102,34 +102,32 @@ impl TryFrom<String> for Environment {
             other => Err(format!(
                 "{} is not a supported environment. use either `local` or `production`.",
                 other
-            ))
+            )),
         }
     }
 }
 
 pub fn get_configuration() -> Result<Settings, config::ConfigError> {
-    let base_path = std::env::current_dir()
-        .expect("Failed to determine current directory");
-    let configuration_directory  = base_path.join("configuration");
+    let base_path = std::env::current_dir().expect("Failed to determine current directory");
+    let configuration_directory = base_path.join("configuration");
     let environment: Environment = std::env::var("APP_ENVIRONMENT")
         .unwrap_or("local".into())
         .try_into()
         .expect("Failed to parse APP_ENVIRONMENT.");
     let environment_filename = format!("{}.yaml", environment.as_str());
     let settings = config::Config::builder()
-        .add_source(
-            config::File::from(configuration_directory.join("base.yaml"))
-        )
-        .add_source(
-            config::File::from(configuration_directory.join(environment_filename))
-        )
+        .add_source(config::File::from(
+            configuration_directory.join("base.yaml"),
+        ))
+        .add_source(config::File::from(
+            configuration_directory.join(environment_filename),
+        ))
         .add_source(
             config::Environment::with_prefix("APP")
                 .prefix_separator("_")
-                .separator("__")
+                .separator("__"),
         )
         .build()?;
 
     settings.try_deserialize::<Settings>()
 }
-
