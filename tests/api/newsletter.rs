@@ -1,8 +1,7 @@
-use uuid::Uuid;
 use crate::helpers::{spawn_app, ConfirmationLinks, TestApp};
+use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
-
 
 #[tokio::test]
 async fn newsletter_are_not_delivered_to_pending_subscribers() {
@@ -76,7 +75,7 @@ async fn newsletters_returns_a_400_for_invalid_data() {
     for (invalid_body, error_message) in test_cases {
         let response = app.publish_newsletter(invalid_body).await;
 
-        assert_eq!(response.status().as_u16(), 400);
+        assert_eq!(response.status().as_u16(), 400, "{}", error_message);
     }
 }
 
@@ -118,8 +117,7 @@ async fn non_existing_user_is_rejected() {
         }
     });
 
-    let response = app.publish_newsletter(newsletter_request_body)
-        .await;
+    let response = app.publish_newsletter(newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 401);
     assert_eq!(
@@ -141,8 +139,7 @@ async fn invalid_password_is_rejected() {
         }
     });
 
-    let response = app.publish_newsletter(newsletter_request_body)
-        .await;
+    let response = app.publish_newsletter(newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 401);
     assert_eq!(
@@ -161,12 +158,19 @@ async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
         .mount_as_scoped(&app.email_server)
         .await;
 
-    app.post_subscriptions(body.into()).await.error_for_status().unwrap();
+    app.post_subscriptions(body.into())
+        .await
+        .error_for_status()
+        .unwrap();
     app.get_confirmation_links(
-        &app.email_server.received_requests().await.unwrap().pop().unwrap(),
+        &app.email_server
+            .received_requests()
+            .await
+            .unwrap()
+            .pop()
+            .unwrap(),
     )
 }
-
 
 async fn create_confirmed_subscriber(app: &TestApp) {
     let confirmation_links = create_unconfirmed_subscriber(app).await;

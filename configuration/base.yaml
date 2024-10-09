@@ -12,3 +12,4 @@ email_client:
   sender_email: test@gmail.com
   authorization_token: "fake-tkn"
   timeout_milliseconds: 10000
+redis_uri: "redis://localhost:6379"

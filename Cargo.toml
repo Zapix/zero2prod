@@ -17,7 +17,7 @@ serde = { version = "1.0.209", features = ["derive"] }
 serde-aux = "4.5.0"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "rt"] }
 config = "0.14.0"
-uuid = { version = "1.10.0", features = ["v4", "v7"] }
+uuid = { version = "1.10.0", features = ["v4", "v7", "serde"] }
 chrono = { version = "0.4.38", default-features = false, features = ["clock"] }
 env_logger = "0.11.5"
 log = "0.4.22"
@@ -41,7 +41,8 @@ hmac = { version = "0.12.1", features = ["std"] }
 sha2 = "0.10.8"
 hex = "0.4.3"
 actix-web-flash-messages = { version = "0.5.0", features = ["cookies"] }
-
+actix-session = { version = "0.10.1", features = ["redis-session-native-tls"] }
+serde_json = "1.0.128"
 
 [dependencies.reqwest]
 version = "0.12.7"
@@ -67,5 +68,4 @@ fake = "2.9.2"
 quickcheck = "1.0.3"
 quickcheck_macros = "1.0.0"
 wiremock = "0.6.2"
-serde_json = "1.0.128"
 linkify = "0.10.0"
