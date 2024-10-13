@@ -1,6 +1,5 @@
 use crate::authentication::UserId;
-use crate::session_state::TypedSession;
-use crate::utils::{e500, see_other};
+use crate::utils::e500;
 use actix_web::web;
 use actix_web::HttpResponse;
 use anyhow::Context;

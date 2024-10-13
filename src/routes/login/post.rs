@@ -11,13 +11,13 @@ use sqlx::PgPool;
 use std::fmt::Formatter;
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct LoginFormData {
     username: String,
     password: Secret<String>,
 }
 
-impl From<FormData> for Credentials {
-    fn from(value: FormData) -> Self {
+impl From<LoginFormData> for Credentials {
+    fn from(value: LoginFormData) -> Self {
         Self {
             username: value.username,
             password: value.password,
@@ -30,7 +30,7 @@ impl From<FormData> for Credentials {
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
 pub async fn login(
-    form: web::Form<FormData>,
+    form: web::Form<LoginFormData>,
     pool: web::Data<PgPool>,
     session: TypedSession,
 ) -> Result<HttpResponse, InternalError<LoginError>> {

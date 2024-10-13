@@ -4,8 +4,8 @@ use actix_web::error::InternalError;
 use actix_web::{
     body::MessageBody,
     dev::{ServiceRequest, ServiceResponse},
-    middleware::{from_fn, Next},
-    App, Error, FromRequest, HttpMessage,
+    middleware::Next,
+    Error, FromRequest, HttpMessage,
 };
 use std::ops::Deref;
 use uuid::Uuid;

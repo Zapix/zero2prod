@@ -2,19 +2,15 @@ use crate::authentication::{
     change_password as change_password_in_db, validate_credentials, AuthError, Credentials, UserId,
 };
 use crate::routes::admin::dashboard::get_username;
-use crate::session_state::TypedSession;
 use crate::utils::{e500, see_other};
-use actix_web::error::InternalError;
 use actix_web::{web, HttpResponse};
 use actix_web_flash_messages::FlashMessage;
 use secrecy::{ExposeSecret, Secret};
 use sqlx::PgPool;
-use std::fmt::Display;
 use thiserror::Error;
-use uuid::Uuid;
 
 #[derive(serde::Deserialize)]
-pub struct FormData {
+pub struct PasswordFormData {
     current_password: Secret<String>,
     new_password: Secret<String>,
     new_password_check: Secret<String>,
@@ -22,7 +18,7 @@ pub struct FormData {
 
 pub async fn change_password(
     pool: web::Data<PgPool>,
-    form: web::Form<FormData>,
+    form: web::Form<PasswordFormData>,
     user_id: web::ReqData<UserId>,
 ) -> Result<HttpResponse, actix_web::Error> {
     let user_id = user_id.into_inner();
@@ -77,15 +73,4 @@ fn validate_password(password: Secret<String>) -> Result<(), PasswordValidationE
     }
 
     Ok(())
-}
-
-fn reject_anonymous_users(session: TypedSession) -> Result<Uuid, actix_web::Error> {
-    match session.get_user_id().map_err(e500)? {
-        Some(user_id) => Ok(user_id),
-        None => {
-            let response = see_other("/login");
-            let e = anyhow::anyhow!("The user has not logged in");
-            Err(InternalError::from_response(e, response).into())
-        }
-    }
 }
