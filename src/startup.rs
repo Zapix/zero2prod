@@ -1,7 +1,15 @@
+use crate::authentication::reject_anonymous_users;
+use crate::configuration::{DatabaseSettings, Settings};
+use crate::email_client::EmailClient;
+use crate::routes::{
+    admin_dashboard, change_password, change_password_form, confirm, health_check, home, log_out,
+    login, login_form, publish_newsletter, subscribe,
+};
 use actix_session::storage::RedisSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::cookie::Key;
 use actix_web::dev::Server;
+use actix_web::middleware::from_fn;
 use actix_web::{web, App, HttpServer};
 use actix_web_flash_messages::storage::CookieMessageStore;
 use actix_web_flash_messages::FlashMessagesFramework;
@@ -10,13 +18,6 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use tracing_actix_web::TracingLogger;
-
-use crate::configuration::{DatabaseSettings, Settings};
-use crate::email_client::EmailClient;
-use crate::routes::{
-    admin_dashboard, change_password, change_password_form, confirm, health_check, home, log_out,
-    login, login_form, publish_newsletter, subscribe,
-};
 
 pub struct Application {
     port: u16,
@@ -112,9 +113,13 @@ pub async fn run(
             .route("/subscriptions", web::post().to(subscribe))
             .route("/subscriptions/confirm", web::get().to(confirm))
             .route("/newsletters", web::post().to(publish_newsletter))
-            .route("/admin/dashboard", web::get().to(admin_dashboard))
-            .route("/admin/password", web::get().to(change_password_form))
-            .route("/admin/password", web::post().to(change_password))
+            .service(
+                web::scope("/admin")
+                    .wrap(from_fn(reject_anonymous_users))
+                    .route("/dashboard", web::get().to(admin_dashboard))
+                    .route("/password", web::get().to(change_password_form))
+                    .route("/password", web::post().to(change_password)),
+            )
             .app_data(connection_pool.clone())
             .app_data(email_client.clone())
             .app_data(base_url.clone())
