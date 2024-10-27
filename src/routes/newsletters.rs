@@ -11,12 +11,12 @@ use base64::Engine;
 use secrecy::Secret;
 use sqlx::PgPool;
 
-struct ConfirmedSubscriber {
-    email: SubscriberEmail,
+pub struct ConfirmedSubscriber {
+    pub email: SubscriberEmail,
 }
 
 #[tracing::instrument(name = "Getting confirmed subscribers", skip(pool))]
-async fn get_confirmed_subscribers(
+pub async fn get_confirmed_subscribers(
     pool: &PgPool,
 ) -> Result<Vec<Result<ConfirmedSubscriber, anyhow::Error>>, anyhow::Error> {
     let confirmed_subscribers = sqlx::query!(
@@ -91,7 +91,7 @@ impl ResponseError for PublishError {
     skip(body, db_pool, email_client, request),
     fields(username=tracing::field::Empty, user_id=tracing::field::Empty)
 )]
-pub async fn publish_newsletter(
+pub async fn api_publish_newsletter(
     body: web::Json<BodyData>,
     db_pool: web::Data<PgPool>,
     email_client: web::Data<EmailClient>,

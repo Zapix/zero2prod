@@ -28,11 +28,11 @@ pub async fn newsletter_form(
     </div>
     <div>
         <label>Text Content</label>
-        <textarea name="text" />
+        <textarea name="content_text"></textarea>
     </div>
     <div>
         <label>Html Context</label>
-        <textarea name="html" />
+        <textarea name="content_html"></textarea>
     </div>
     <button type="submit">Send</button>
 </form>
