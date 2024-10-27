@@ -148,7 +148,7 @@ async fn invalid_password_is_rejected() {
     );
 }
 
-async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
+pub async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
     let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
 
     let _mock_guard = Mock::given(path("/email"))
@@ -172,7 +172,7 @@ async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
     )
 }
 
-async fn create_confirmed_subscriber(app: &TestApp) {
+pub async fn create_confirmed_subscriber(app: &TestApp) {
     let confirmation_links = create_unconfirmed_subscriber(app).await;
     reqwest::get(confirmation_links.html)
         .await
