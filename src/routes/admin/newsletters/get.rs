@@ -7,6 +7,7 @@ pub async fn newsletter_form(
     flash_messages: IncomingFlashMessages,
 ) -> Result<HttpResponse, actix_web::Error> {
     let mut html_message = String::new();
+    let idempotency_key = uuid::Uuid::new_v4();
     for message in flash_messages.iter() {
         let _ = write!(html_message, "<p><i>{}</i></p>", message.content());
     }
@@ -34,6 +35,7 @@ pub async fn newsletter_form(
         <label>Html Context</label>
         <textarea name="content_html"></textarea>
     </div>
+    <input hidden type="text" name="idempotency_key" value="{idempotency_key}"
     <button type="submit">Send</button>
 </form>
 <p><a href="/admin/dashboard">&lt;- Back</a></p>
