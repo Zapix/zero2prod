@@ -1,4 +1,7 @@
 use crate::helpers::{spawn_app, ConfirmationLinks, TestApp};
+use fake::faker::internet::en::SafeEmail;
+use fake::faker::name::en::Name;
+use fake::Fake;
 use uuid::Uuid;
 use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
@@ -25,6 +28,7 @@ async fn newsletter_are_not_delivered_to_pending_subscribers() {
     let response = app.publish_newsletter(newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 200);
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -49,6 +53,7 @@ async fn newsletter_are_delivered_to_confirmed_subscribers() {
     let response = app.publish_newsletter(newsletter_request_body).await;
 
     assert_eq!(response.status().as_u16(), 200);
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -149,7 +154,13 @@ async fn invalid_password_is_rejected() {
 }
 
 pub async fn create_unconfirmed_subscriber(app: &TestApp) -> ConfirmationLinks {
-    let body = "name=le%20guin&email=ursula_le_guin%40gmail.com";
+    let name: String = Name().fake();
+    let email: String = SafeEmail().fake();
+    let body = serde_urlencoded::to_string(&serde_json::json!({
+        "name": name,
+        "email": email
+    }))
+    .unwrap();
 
     let _mock_guard = Mock::given(path("/email"))
         .and(method("POST"))
