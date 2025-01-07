@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use crate::helpers::{assert_is_redirect_to, spawn_app};
 use crate::newsletter::{create_confirmed_subscriber, create_unconfirmed_subscriber};
 
-use wiremock::matchers::any;
+use wiremock::matchers::{any, method, path};
 use wiremock::{Mock, ResponseTemplate};
 
 #[tokio::test]
@@ -45,6 +47,7 @@ async fn post_send_newsletters_title_is_required() {
             "title": "",
             "content_text": "",
             "content_html": "",
+            "idempotency_key": uuid::Uuid::new_v4().to_string(),
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/newsletters");
@@ -70,6 +73,7 @@ async fn post_send_newsletters_content_text_is_required() {
             "title": "Rust Weekly",
             "content_text": "",
             "content_html": "",
+            "idempotency_key": uuid::Uuid::new_v4().to_string(),
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/newsletters");
@@ -95,6 +99,7 @@ async fn post_send_newsletters_content_html_is_required() {
             "title": "Rust Weekly",
             "content_text": "New content",
             "content_html": "",
+            "idempotency_key": uuid::Uuid::new_v4().to_string(),
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/newsletters");
@@ -127,12 +132,14 @@ async fn newsletters_are_delivered_to_confirmed_subscribers() {
             "title": "Rust Weekly",
             "content_text": "Weekly news",
             "content_html": "<p>Weekly news</p>",
+            "idempotency_key": uuid::Uuid::new_v4().to_string(),
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/dashboard");
 
     let page_html = app.get_admin_dashboard_html().await;
     assert!(page_html.contains("Newsletters were sent to subscribers!"));
+    app.dispatch_all_pending_emails().await;
 }
 
 #[tokio::test]
@@ -159,10 +166,86 @@ async fn newsletters_are_not_delivered_to_pending_subscribers() {
             "title": "Rust Weekly",
             "content_text": "Weekly news",
             "content_html": "<p>Weekly news</p>",
+            "idempotency_key": uuid::Uuid::new_v4().to_string(),
         }))
         .await;
     assert_is_redirect_to(&response, "/admin/dashboard");
 
     let page_html = app.get_admin_dashboard_html().await;
     assert!(page_html.contains("Newsletters were sent to subscribers!"));
+    app.dispatch_all_pending_emails().await;
+}
+
+#[tokio::test]
+async fn newsletter_creation_is_idempotent() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+
+    let login_body = serde_json::json!({
+        "username": &app.test_user.username,
+        "password": &app.test_user.password,
+    });
+
+    let response = app.post_login(&login_body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "content_text": "Hello World!",
+        "content_html": "<b>Hello World!</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+
+    // Send newsletters first time
+    let response = app.post_newsletter(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
+    let page_html = app.get_admin_dashboard_html().await;
+    assert!(page_html.contains("Newsletters were sent to subscribers!"));
+
+    // Send newsletters second time
+    let response = app.post_newsletter(&newsletter_request_body).await;
+    assert_is_redirect_to(&response, "/admin/dashboard");
+
+    app.dispatch_all_pending_emails().await;
+    // Mock have to raise an error
+}
+
+#[tokio::test]
+async fn concurrent_from_submission_is_handled_gracefully() {
+    let app = spawn_app().await;
+    create_confirmed_subscriber(&app).await;
+
+    let login_body = serde_json::json!({
+        "username": &app.test_user.username,
+        "password": &app.test_user.password,
+    });
+    app.post_login(&login_body).await;
+
+    Mock::given(path("/email"))
+        .and(method("POST"))
+        .respond_with(ResponseTemplate::new(200).set_delay(Duration::from_secs(2)))
+        .expect(1)
+        .mount(&app.email_server)
+        .await;
+
+    let newsletter_request_body = serde_json::json!({
+        "title": "Newsletter title",
+        "content_text": "Hello World!",
+        "content_html": "<b>Hello World!</p>",
+        "idempotency_key": uuid::Uuid::new_v4().to_string()
+    });
+
+    let response1 = app.post_newsletter(&newsletter_request_body);
+    let response2 = app.post_newsletter(&newsletter_request_body);
+
+    let (response1, response2) = tokio::join!(response1, response2);
+    assert_eq!(response1.status(), response2.status());
+    app.dispatch_all_pending_emails().await;
 }
